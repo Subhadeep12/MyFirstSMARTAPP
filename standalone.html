@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  
+    <script src="fhir-client.js"></script>
+  
+    <script>
+      FHIR.oauth2.authorize({
+        client: {
+          "client_id": "oXU50MTy8oNZyzAdgm7jNsd2EYKJw0alNHX2PMcVbsw",
+          "scope"    : "patient/Observation.read patient/Patient.read launch/patient"
+        },
+        server: "https://launch.smarthealthit.org/v/r2/sim/eyJrIjoiMSIsImIiOiIwOTllN2RlNy1jOTUyLTQwZTItOWI0ZS0wZmFjZTc4YzlkODAifQ/fhir"
+      });
+    </script>
+  
+  </head>
+  <body>
+    <h1>Loading...</h1>
+  </body>
+</html>

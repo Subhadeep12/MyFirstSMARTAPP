@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>My SMART FHIR APP</title>
+    <script src="fhir-client.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  </head>
+  <body>
+    <div id="main">
+      
+      <div id="patientInfoDetail"> "Loading ...."</div>
+      <div id="medicationInfo"> "Loading ...."</div>
+    </div>
+    <div id="procedureInfo"> "Loading ...."</div>
+    <h1 id="status">Loading Info..</h1>
+    <div id="chart" style="width:600px;height:400px;"></div>
+
+    <h1 id="statusC">Loading Info...</h1>
+    <div id="chartC" style="width:600px;height:400px;"></div>
+
+    
+    
+
+    <script>
+      FHIR.oauth2.ready(getA1Cdata, showError);
+    //<div id="patientInfoDetail" style="width:200px;height:200px;border-style: dashed;border-color: green;">"Loading ...."</div>
+      //<div id="medicationInfo" style="width:200px;height:200px;border-style: dashed;border-color: green;"> "Loading ...."</div>
+      var statusDiv = document.getElementById("status");
+      var chartDiv = document.getElementById("chart");
+
+      var statusDivC = document.getElementById("statusC");
+      var chartDivC = document.getElementById("chartC");
+
+      
+      
+      function getA1Cdata(smart) {
+        var loincCode="29463-7";
+        var maxCount=5;
+        var graphType="bar";
+        var chartTitle="Observation-Vital Sign (Weight)"
+        smart.patient.api
+          .search({
+            type: "Observation",
+            query: {
+               code:[loincCode],
+              "_sort:desc": "date",
+              _count: [maxCount]
+            }
+          })
+          .then(function(fhirObservations) {
+       
+            var dates = [];
+            var values = [];
+
+            (fhirObservations.data.entry || []).forEach(function(a1c) {
+              var date = a1c.resource.effectiveDateTime;
+              var value =
+                a1c.resource.valueQuantity && a1c.resource.valueQuantity.value;
+              if (date && value && dates.indexOf(date) == -1) {
+                dates.push(date);
+                values.push(Math.round(value * 10) / 10);
+              }
+            });
+
+           
+            if (values.length === 0)
+              return (statusDiv.innerHTML = "No observations found.");
+           
+
+            statusDiv.style.display = "none";
+            
+            
+            Plotly.newPlot(chartDiv, {
+              data: [
+                {
+                  x: dates,
+                  y: values,
+                  type: graphType
+                }
+              ],
+              layout: {
+                title: chartTitle,
+                xaxis: { type: "date", tickformat: "%b %y" },
+                yaxis: { range: [0, 100] }
+              },
+              config: {
+                displayModeBar: false
+              }
+            });
+          });
+        /////////////
+        smart.patient.api
+          .search({
+            type: "Observation",
+            query: {
+              code: "38483-4",
+              "_sort:desc": "date",
+              _count: 10
+            }
+          })
+          .then(function(fhirObservations) {
+            var dates = [];
+            var values = [];
+
+            (fhirObservations.data.entry || []).forEach(function(a1c) {
+              var date = a1c.resource.effectiveDateTime;
+              var value =
+                a1c.resource.valueQuantity && a1c.resource.valueQuantity.value;
+              if (date && value && dates.indexOf(date) == -1) {
+                dates.push(date);
+                values.push(Math.round(value * 10) / 10);
+              }
+            });
+
+            if (values.length === 0)
+              return (statusDivC.innerHTML =
+                "No Cretanine observations found.");
+
+            statusDivC.style.display = "none";
+
+            Plotly.newPlot(chartDivC, {
+              data: [
+                {
+                  x: dates,
+                  y: values,
+                  type: "scatter"
+                }
+              ],
+              layout: {
+                title: "Observation-LabResult (Creatinine Level)",
+                xaxis: { type: "date", tickformat: "%b %y" },
+                yaxis: { range: [0, 10] }
+              },
+              config: {
+                displayModeBar: false
+              }
+            });
+          });
+        ////////////////
+        //render current patient
+        smart.patient.read().then(
+          function(pt) {
+            var patientInfo=[];
+            patientInfo.push(pt.name[0].given[0]);
+            patientInfo.push(pt.name[0].family);
+            patientInfo.push(pt.birthDate);
+            patientInfo.push(pt.address[0].line[0]);
+            document.getElementById("patientInfoDetail").innerText = JSON.stringify(patientInfo,null,4);
+            },
+          function(error) {
+            document.getElementById("patientFN").innerText = error.stack;
+          }
+        );
+        
+        // get medication information
+   smart.patient.api
+          .search({
+            type: "MedicationRequest",  //MedicationRequest   in SMART app  , MedicationStatement in Cerner app
+            query: {
+              "_sort:desc": "date",
+              _count: 10
+            }
+          })
+          .then(function(fhirmed) {
+            var values = [];
+
+            (fhirmed.data.entry || []).forEach(function(med) {
+              var value = med.resource.medicationCodeableConcept.text;
+              //var value = med.resource;
+              values.push(value);
+              });
+         document.getElementById("medicationInfo").innerText = JSON.stringify(values ,null,4);
+       });
+        ///////
+         // procedure
+        smart.patient.api
+          .search({
+            type: "Procedure",  //MedicationRequest   in SMART app  , MedicationStatement in Cerner app
+            query: {
+              "_sort:desc": "date",
+              _count: 10
+            }
+          })
+          .then(function(fhirmed) {
+            var values = [];
+
+            (fhirmed.data.entry || []).forEach(function(med) {
+              var value = med.resource.code.text + " ## " + med.resource.status + " ## " + med.resource.performedPeriod.start  + " ## " + med.resource.performedPeriod.end;
+              //value.concat(med.resource.status);
+              //var value = med.resource;
+              values.push(value);
+              });
+         document.getElementById("procedureInfo").innerText = JSON.stringify(values ,null,4);
+       });
+      }
+
+     
+        ///////
+     // }
+      ////
+      function showError(error) {
+        return (statusDiv.innerHTML =
+          "An error occurred connecting to the EHR");
+      }
+    </script>
+  </body>
+</html>
